@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>人力登錄表單</title>
+    <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+    <style>
+        body { font-family: sans-serif; padding: 20px; line-height: 1.6; background-color: #f4f4f4; }
+        .container { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; font-weight: bold; margin-bottom: 5px; }
+        input[type="text"], select { width: 100%; padding: 10px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 5px; }
+        .checkbox-group { display: flex; flex-wrap: wrap; gap: 10px; }
+        button { 
+            background-color: #00B900; color: white; border: none; 
+            padding: 12px; border-radius: 5px; cursor: pointer; width: 100%;
+            font-size: 16px; margin-top: 10px; font-weight: bold;
+        }
+        button:disabled { background-color: #ccc; }
+        #loading { text-align: center; color: #666; font-style: italic; margin-top: 50px; }
+    </style>
+</head>
+<body>
+
+    <div id="loading">正在連線 LINE 帳號...</div>
+
+    <div class="container" id="formContainer" style="display: none;">
+        <h2 style="text-align: center; color: #333;">人力登錄表單</h2>
+        <form id="jobForm">
+            <div class="form-group">
+                <label>姓名:</label>
+                <input type="text" name="name" required placeholder="請輸入姓名">
+            </div>
+
+            <div class="form-group">
+                <label>手機:</label>
+                <input type="text" name="phone" required placeholder="請輸入手機號碼">
+            </div>
+
+            <div class="form-group">
+                <label>是否可立即上工:</label>
+                <select name="available" required>
+                    <option value="是">是</option>
+                    <option value="否">否</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>工作類型 (可複選):</label>
+                <div class="checkbox-group">
+                    <label><input type="checkbox" name="type" value="外送"> 外送</label>
+                    <label><input type="checkbox" name="type" value="門市"> 門市</label>
+                    <label><input type="checkbox" name="type" value="倉儲"> 倉儲</label>
+                    <label><input type="checkbox" name="type" value="活動支援"> 活動支援</label>
+                </div>
+            </div>
+
+            <button type="submit" id="submitBtn">提交資料</button>
+        </form>
+    </div>
+
+    <script>
+        // --- 已幫你填入正確參數 ---
+        const LIFF_ID = "2008788601-oLyc8y3t"; 
+        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwl-5qi-0zus4Bg_f7fxt_P7zYbCl2O3xKsV4-BJnTCb4ZmNUsoieTr7-sc-s29_55M0g/exec"; 
+        // -------------------------
+
+        let userId = "";
+
+        async function initLiff() {
+            try {
+                await liff.init({ liffId: LIFF_ID });
+                if (!liff.isLoggedIn()) {
+                    liff.login();
+                } else {
+                    const profile = await liff.getProfile();
+                    userId = profile.userId;
+                    document.getElementById("loading").style.display = "none";
+                    document.getElementById("formContainer").style.display = "block";
+                }
+            } catch (error) {
+                console.error("LIFF 初始化失敗", error);
+                document.getElementById("loading").innerText = "載入失敗，請確認在 LINE App 中開啟。";
+            }
+        }
+
+        initLiff();
+
+        document.getElementById("jobForm").addEventListener("submit", async (e) => {
+            e.preventDefault();
+            
+            const btn = document.getElementById("submitBtn");
+            btn.disabled = true;
+            btn.innerText = "資料傳送中...";
+
+            const formData = new FormData(e.target);
+            const data = {
+                userId: userId,
+                name: formData.get("name"),
+                phone: formData.get("phone"),
+                available: formData.get("available"),
+                type: formData.getAll("type").join(",")
+            };
+
+            try {
+                // 使用 no-cors 模式確保發送成功
+                await fetch(SCRIPT_URL, {
+                    method: "POST",
+                    mode: "no-cors",
+                    body: JSON.stringify(data)
+                });
+
+                alert("資料已成功存入！");
+                liff.closeWindow(); 
+            } catch (error) {
+                console.error("送出錯誤", error);
+                alert("送出失敗，請檢查網路連線");
+                btn.disabled = false;
+                btn.innerText = "提交資料";
+            }
+        });
+    </script>
+</body>
+</html>
